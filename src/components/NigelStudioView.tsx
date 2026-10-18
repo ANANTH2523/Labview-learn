@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NIGEL_PROMPT_TEMPLATES } from '../data/nigelTemplates';
 import { evaluateNigelPrompt, PromptEvaluationResult } from '../utils/nigel-evaluator';
+import { buildNigelBlueprint } from '../utils/nigel-blueprint';
 import type { NigelBlueprintResult } from '../types';
 import {
   Sparkles,
@@ -43,41 +44,13 @@ Trap VISA timeout error -1073807339 and pre-allocate measurement arrays using In
   // Live client-side evaluation
   const liveEval: PromptEvaluationResult = evaluateNigelPrompt(promptText);
 
-  const handleGenerateBlueprint = async () => {
+  const handleGenerateBlueprint = () => {
     setIsGenerating(true);
-    try {
-      const response = await fetch('/api/nigel/assist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          testRequirement: promptText,
-          targetHardware: hardware,
-          architecturePattern: architecture,
-          promptDraft: promptText,
-        }),
-      });
-
-      if (!response.ok) throw new Error('API request failed');
-      const data = await response.json();
-      setBlueprintResult(data);
-    } catch (err) {
-      console.error(err);
-      // Fallback result
-      setBlueprintResult({
-        score: liveEval.score,
-        critique: 'Prompt provides good structural guidelines. Be sure to instruct Nigel AI to explicitly enforce error cluster bypass on all subVIs.',
-        optimizedPrompt: promptText,
-        blockDiagramBlueprint: {
-          pattern: architecture,
-          states: ['Initialize', 'Configure Hardware', 'Acquisition Loop', 'Limit Evaluation', 'TDMS Log', 'Teardown'],
-          keyNodes: ['VISA Open', 'VISA Write/Read', 'While Loop with Shift Register', 'In Range and Coerce', 'TDMS Write', 'VISA Close'],
-          pitfallAlert: 'Ensure VISA sessions are closed in the Teardown state even if a timeout error occurs mid-sweep.',
-        },
-        modelUsed: 'offline-labview-architect',
-      });
-    } finally {
+    // Runs on-device; the short delay only gives the button's loading state time to register.
+    window.setTimeout(() => {
+      setBlueprintResult(buildNigelBlueprint({ prompt: promptText, hardware, architecture }));
       setIsGenerating(false);
-    }
+    }, 250);
   };
 
   const copyToClipboard = async (text: string) => {
