@@ -3,18 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navbar, ActiveTab } from './components/Navbar';
-import { CurriculumView } from './components/CurriculumView';
-import { SimulatorView } from './components/SimulatorView';
-import { NigelStudioView } from './components/NigelStudioView';
-import { MentorChatView } from './components/MentorChatView';
-import { ExamPrepView } from './components/ExamPrepView';
-import { CertificationTrackerView } from './components/CertificationTrackerView';
-import { OSGuideView } from './components/OSGuideView';
 import { ProgressiveStepper } from './components/ProgressiveStepper';
-import { ZeroToProWalkthrough } from './components/ZeroToProWalkthrough';
-import { ResourceLibraryView } from './components/ResourceLibraryView';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { PROGRESSIVE_MILESTONES } from './data/progressiveSteps';
+import { usePersistentIndex, usePersistentSet } from './utils/storage';
 import {
   GraduationCap,
   Cpu,
@@ -29,6 +23,31 @@ import {
   Library,
 } from 'lucide-react';
 
+const CurriculumView = lazy(() => import('./components/CurriculumView').then((m) => ({ default: m.CurriculumView })));
+const SimulatorView = lazy(() => import('./components/SimulatorView').then((m) => ({ default: m.SimulatorView })));
+const NigelStudioView = lazy(() => import('./components/NigelStudioView').then((m) => ({ default: m.NigelStudioView })));
+const MentorChatView = lazy(() => import('./components/MentorChatView').then((m) => ({ default: m.MentorChatView })));
+const ExamPrepView = lazy(() => import('./components/ExamPrepView').then((m) => ({ default: m.ExamPrepView })));
+const CertificationTrackerView = lazy(() => import('./components/CertificationTrackerView').then((m) => ({ default: m.CertificationTrackerView })));
+const OSGuideView = lazy(() => import('./components/OSGuideView').then((m) => ({ default: m.OSGuideView })));
+const ZeroToProWalkthrough = lazy(() => import('./components/ZeroToProWalkthrough').then((m) => ({ default: m.ZeroToProWalkthrough })));
+const ResourceLibraryView = lazy(() => import('./components/ResourceLibraryView').then((m) => ({ default: m.ResourceLibraryView })));
+
+const DEFAULT_SKILL_IDS = ['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine'];
+
+/** Returns a copy of `set` with `id` added, or removed if already present. */
+const toggled = (set: Set<string>, id: string): Set<string> => {
+  const next = new Set(set);
+  if (!next.delete(id)) next.add(id);
+  return next;
+};
+
+const ViewFallback = () => (
+  <div role="status" className="max-w-7xl mx-auto px-4 py-16 text-center text-sm text-slate-500">
+    Loading…
+  </div>
+);
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('curriculum');
   const [isRunning, setIsRunning] = useState<boolean>(true);
@@ -38,91 +57,28 @@ export default function App() {
   const [nigelPromptToLoad, setNigelPromptToLoad] = useState<string>('');
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
   const [isZeroToProOpen, setIsZeroToProOpen] = useState<boolean>(false);
+  // Load the walkthrough chunk on first open, then keep it mounted so its internal state survives closing.
+  const [walkthroughMounted, setWalkthroughMounted] = useState<boolean>(false);
+  if (isZeroToProOpen && !walkthroughMounted) setWalkthroughMounted(true);
   const [activeExamTier, setActiveExamTier] = useState<'ALL' | 'CLAD' | 'CLD' | 'CLA'>('ALL');
 
-  // Progressive Milestone State with localStorage persistence
-  const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('labview_academy_milestone_index');
-      return saved !== null ? Number(saved) : 0;
-    } catch {
-      return 0;
-    }
-  });
-
-  const [completedMilestones, setCompletedMilestones] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('labview_academy_completed_milestones');
-      return saved ? new Set(JSON.parse(saved)) : new Set(['m-1']);
-    } catch {
-      return new Set(['m-1']);
-    }
-  });
-
-  // Certification Tracker State with localStorage persistence
-  const [completedLabIds, setCompletedLabIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('labview_academy_completed_labs');
-      return saved ? new Set(JSON.parse(saved)) : new Set(['lab-1']);
-    } catch {
-      return new Set(['lab-1']);
-    }
-  });
-
-  const [completedSkillIds, setCompletedSkillIds] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('labview_academy_completed_skills');
-      return saved
-        ? new Set(JSON.parse(saved))
-        : new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine']);
-    } catch {
-      return new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine']);
-    }
-  });
-
-  // Sync state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('labview_academy_completed_milestones', JSON.stringify([...completedMilestones]));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [completedMilestones]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('labview_academy_completed_labs', JSON.stringify([...completedLabIds]));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [completedLabIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('labview_academy_completed_skills', JSON.stringify([...completedSkillIds]));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [completedSkillIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('labview_academy_milestone_index', String(currentMilestoneIndex));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [currentMilestoneIndex]);
+  // Progress state, persisted to localStorage
+  const [currentMilestoneIndex, setCurrentMilestoneIndex] = usePersistentIndex(
+    'labview_academy_milestone_index',
+    PROGRESSIVE_MILESTONES.length - 1,
+  );
+  const [completedMilestones, setCompletedMilestones] = usePersistentSet('labview_academy_completed_milestones', ['m-1']);
+  const [completedLabIds, setCompletedLabIds] = usePersistentSet('labview_academy_completed_labs', ['lab-1']);
+  const [completedSkillIds, setCompletedSkillIds] = usePersistentSet('labview_academy_completed_skills', DEFAULT_SKILL_IDS);
 
   // Fetch server health & Gemini key status
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
-      .then((data) => {
-        setHasGeminiKey(Boolean(data.hasGeminiKey));
-      })
-      .catch(() => {
-        setHasGeminiKey(false);
-      });
+    const controller = new AbortController();
+    fetch('/api/health', { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Health check failed: ${res.status}`))))
+      .then((data) => setHasGeminiKey(Boolean(data.hasGeminiKey)))
+      .catch(() => setHasGeminiKey(false));
+    return () => controller.abort();
   }, []);
 
   const handleOpenLab = (labId: string) => {
@@ -142,55 +98,16 @@ export default function App() {
     setActiveTab('nigel');
   };
 
-  const handleMarkMilestoneComplete = (id: string) => {
-    setCompletedMilestones((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const handleMarkMilestoneComplete = (id: string) => setCompletedMilestones((prev) => toggled(prev, id));
+  const handleToggleSkill = (skillId: string) => setCompletedSkillIds((prev) => toggled(prev, skillId));
+  const handleToggleLab = (labId: string) => setCompletedLabIds((prev) => toggled(prev, labId));
 
-  const handleToggleSkill = (skillId: string) => {
-    setCompletedSkillIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(skillId)) {
-        next.delete(skillId);
-      } else {
-        next.add(skillId);
-      }
-      return next;
-    });
-  };
-
-  const handleToggleLab = (labId: string) => {
-    setCompletedLabIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(labId)) {
-        next.delete(labId);
-      } else {
-        next.add(labId);
-      }
-      return next;
-    });
-  };
-
+  // The persistent hooks mirror these defaults back to localStorage.
   const handleResetAllProgress = () => {
     setCompletedMilestones(new Set(['m-1']));
     setCompletedLabIds(new Set(['lab-1']));
-    setCompletedSkillIds(
-      new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine'])
-    );
+    setCompletedSkillIds(new Set(DEFAULT_SKILL_IDS));
     setCurrentMilestoneIndex(0);
-    try {
-      localStorage.removeItem('labview_academy_completed_milestones');
-      localStorage.removeItem('labview_academy_completed_labs');
-      localStorage.removeItem('labview_academy_completed_skills');
-      localStorage.removeItem('labview_academy_milestone_index');
-    } catch {}
   };
 
   const handleOpenExamWithTier = (tier: 'CLAD' | 'CLD' | 'CLA') => {
@@ -223,7 +140,7 @@ export default function App() {
               <span>Zero-to-Pro Track:</span>
             </span>
             <span className="text-slate-300 font-medium">
-              Milestone {currentMilestoneIndex + 1} of 7
+              Milestone {currentMilestoneIndex + 1} of {PROGRESSIVE_MILESTONES.length}
             </span>
           </div>
 
@@ -310,6 +227,8 @@ export default function App() {
         </div>
 
         {/* View Routing */}
+        <ErrorBoundary resetKey={activeTab}>
+        <Suspense fallback={<ViewFallback />}>
         {activeTab === 'curriculum' && (
           <CurriculumView
             initialLessonId={activeLessonId}
@@ -369,9 +288,13 @@ export default function App() {
         )}
 
         {activeTab === 'osGuide' && <OSGuideView />}
+        </Suspense>
+        </ErrorBoundary>
       </main>
 
       {/* Zero to Pro Walkthrough Modal */}
+      {walkthroughMounted && (
+      <Suspense fallback={null}>
       <ZeroToProWalkthrough
         isOpen={isZeroToProOpen}
         onClose={() => setIsZeroToProOpen(false)}
@@ -384,6 +307,8 @@ export default function App() {
         completedStepIds={completedMilestones}
         onToggleStepComplete={handleMarkMilestoneComplete}
       />
+      </Suspense>
+      )}
 
       {/* Professional Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-6 text-xs text-slate-500">

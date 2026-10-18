@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NIGEL_PROMPT_TEMPLATES } from '../data/nigelTemplates';
 import { evaluateNigelPrompt, PromptEvaluationResult } from '../utils/nigel-evaluator';
+import type { NigelBlueprintResult } from '../types';
 import {
   Sparkles,
   Zap,
@@ -37,7 +38,7 @@ Trap VISA timeout error -1073807339 and pre-allocate measurement arrays using In
   const [architecture, setArchitecture] = useState<string>('Queued Message Handler (QMH)');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
-  const [blueprintResult, setBlueprintResult] = useState<any | null>(null);
+  const [blueprintResult, setBlueprintResult] = useState<NigelBlueprintResult | null>(null);
 
   // Live client-side evaluation
   const liveEval: PromptEvaluationResult = evaluateNigelPrompt(promptText);
@@ -79,8 +80,13 @@ Trap VISA timeout error -1073807339 and pre-allocate measurement arrays using In
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.warn('Clipboard unavailable:', err);
+      return;
+    }
     setCopiedPrompt(true);
     setTimeout(() => setCopiedPrompt(false), 2000);
   };
