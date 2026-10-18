@@ -2,7 +2,11 @@ node_modules/
 build/
 dist/
 coverage/
+*.tsbuildinfo
 .DS_Store
 *.log
 .env*
 !.env.example
+
+# AI Studio / agent tool scratch data
+.aistudio/
