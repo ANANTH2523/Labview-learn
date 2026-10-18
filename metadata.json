@@ -1,0 +1,8 @@
+{
+  "name": "LabVIEW Academy & Nigel AI Mentor",
+  "description": "Comprehensive mastery platform for LabVIEW, test automation, and Nigel AI prompt engineering. From zero to certified pro with interactive simulations, AI mentorship, and automated test bench workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

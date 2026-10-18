@@ -1,0 +1,408 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Navbar, ActiveTab } from './components/Navbar';
+import { CurriculumView } from './components/CurriculumView';
+import { SimulatorView } from './components/SimulatorView';
+import { NigelStudioView } from './components/NigelStudioView';
+import { MentorChatView } from './components/MentorChatView';
+import { ExamPrepView } from './components/ExamPrepView';
+import { CertificationTrackerView } from './components/CertificationTrackerView';
+import { OSGuideView } from './components/OSGuideView';
+import { ProgressiveStepper } from './components/ProgressiveStepper';
+import { ZeroToProWalkthrough } from './components/ZeroToProWalkthrough';
+import { ResourceLibraryView } from './components/ResourceLibraryView';
+import {
+  GraduationCap,
+  Cpu,
+  Sparkles,
+  MessageSquare,
+  Award,
+  Monitor,
+  Flame,
+  CheckCircle2,
+  ShieldCheck,
+  Lightbulb,
+  Library,
+} from 'lucide-react';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('curriculum');
+  const [isRunning, setIsRunning] = useState<boolean>(true);
+  const [activeLabId, setActiveLabId] = useState<string>('lab-1');
+  const [activeMentorTopic, setActiveMentorTopic] = useState<string>('');
+  const [activeLessonId, setActiveLessonId] = useState<string>('lesson-1');
+  const [nigelPromptToLoad, setNigelPromptToLoad] = useState<string>('');
+  const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
+  const [isZeroToProOpen, setIsZeroToProOpen] = useState<boolean>(false);
+  const [activeExamTier, setActiveExamTier] = useState<'ALL' | 'CLAD' | 'CLD' | 'CLA'>('ALL');
+
+  // Progressive Milestone State with localStorage persistence
+  const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('labview_academy_milestone_index');
+      return saved !== null ? Number(saved) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [completedMilestones, setCompletedMilestones] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('labview_academy_completed_milestones');
+      return saved ? new Set(JSON.parse(saved)) : new Set(['m-1']);
+    } catch {
+      return new Set(['m-1']);
+    }
+  });
+
+  // Certification Tracker State with localStorage persistence
+  const [completedLabIds, setCompletedLabIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('labview_academy_completed_labs');
+      return saved ? new Set(JSON.parse(saved)) : new Set(['lab-1']);
+    } catch {
+      return new Set(['lab-1']);
+    }
+  });
+
+  const [completedSkillIds, setCompletedSkillIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('labview_academy_completed_skills');
+      return saved
+        ? new Set(JSON.parse(saved))
+        : new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine']);
+    } catch {
+      return new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine']);
+    }
+  });
+
+  // Sync state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('labview_academy_completed_milestones', JSON.stringify([...completedMilestones]));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [completedMilestones]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('labview_academy_completed_labs', JSON.stringify([...completedLabIds]));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [completedLabIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('labview_academy_completed_skills', JSON.stringify([...completedSkillIds]));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [completedSkillIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('labview_academy_milestone_index', String(currentMilestoneIndex));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [currentMilestoneIndex]);
+
+  // Fetch server health & Gemini key status
+  useEffect(() => {
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data) => {
+        setHasGeminiKey(Boolean(data.hasGeminiKey));
+      })
+      .catch(() => {
+        setHasGeminiKey(false);
+      });
+  }, []);
+
+  const handleOpenLab = (labId: string) => {
+    setActiveLabId(labId);
+    setActiveTab('simulator');
+    setIsRunning(true);
+    setCompletedLabIds((prev) => new Set([...prev, labId]));
+  };
+
+  const handleAskMentor = (topic: string) => {
+    setActiveMentorTopic(topic);
+    setActiveTab('mentor');
+  };
+
+  const handleOpenNigelWithPrompt = (prompt: string) => {
+    setNigelPromptToLoad(prompt);
+    setActiveTab('nigel');
+  };
+
+  const handleMarkMilestoneComplete = (id: string) => {
+    setCompletedMilestones((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSkill = (skillId: string) => {
+    setCompletedSkillIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(skillId)) {
+        next.delete(skillId);
+      } else {
+        next.add(skillId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleLab = (labId: string) => {
+    setCompletedLabIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(labId)) {
+        next.delete(labId);
+      } else {
+        next.add(labId);
+      }
+      return next;
+    });
+  };
+
+  const handleResetAllProgress = () => {
+    setCompletedMilestones(new Set(['m-1']));
+    setCompletedLabIds(new Set(['lab-1']));
+    setCompletedSkillIds(
+      new Set(['clad-dataflow', 'clad-shift-registers', 'clad-wire-coercion', 'cld-state-machine'])
+    );
+    setCurrentMilestoneIndex(0);
+    try {
+      localStorage.removeItem('labview_academy_completed_milestones');
+      localStorage.removeItem('labview_academy_completed_labs');
+      localStorage.removeItem('labview_academy_completed_skills');
+      localStorage.removeItem('labview_academy_milestone_index');
+    } catch {}
+  };
+
+  const handleOpenExamWithTier = (tier: 'CLAD' | 'CLD' | 'CLA') => {
+    setActiveExamTier(tier);
+    setActiveTab('exam');
+  };
+
+  const handleOpenLesson = (lessonId: string) => {
+    setActiveLessonId(lessonId);
+    setActiveTab('curriculum');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+      {/* Top Navbar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab)}
+        isRunning={isRunning}
+        onRunToggle={() => setIsRunning(!isRunning)}
+        hasGeminiKey={hasGeminiKey}
+      />
+
+      {/* Secondary Fast-Access Bar */}
+      <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-8 py-2">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-xs overflow-x-auto gap-4">
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="font-bold text-amber-400 flex items-center gap-1.5">
+              <Flame className="w-3.5 h-3.5 fill-current" />
+              <span>Zero-to-Pro Track:</span>
+            </span>
+            <span className="text-slate-300 font-medium">
+              Milestone {currentMilestoneIndex + 1} of 7
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsZeroToProOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 shadow-sm transition-all cursor-pointer"
+            >
+              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+              <span>What is LabVIEW? (Zero-to-Pro)</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('tracker')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'tracker'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'text-amber-400 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Cert Readiness Tracker</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('resources')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'resources'
+                  ? 'bg-amber-500 text-slate-950 shadow-sm'
+                  : 'text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60'
+              }`}
+            >
+              <Library className="w-3.5 h-3.5 text-amber-400" />
+              <span>Resource Library</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('osGuide')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'osGuide'
+                  ? 'bg-sky-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800'
+              }`}
+            >
+              <Monitor className="w-3.5 h-3.5" />
+              <span>macOS · Linux · Windows</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenLab('lab-1')}
+              className="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Thermal PID Lab
+            </button>
+            <button
+              onClick={() => handleOpenLab('lab-2')}
+              className="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Producer-Consumer Lab
+            </button>
+            <button
+              onClick={() => handleOpenLab('lab-3')}
+              className="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              SCPI Sweep Lab
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="flex-1 pb-12">
+        {/* Persistent Progressive Milestone Stepper at top */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <ProgressiveStepper
+            currentMilestoneIndex={currentMilestoneIndex}
+            setCurrentMilestoneIndex={setCurrentMilestoneIndex}
+            completedMilestones={completedMilestones}
+            onMarkMilestoneComplete={handleMarkMilestoneComplete}
+            onLaunchLab={handleOpenLab}
+            onOpenNigel={() => setActiveTab('nigel')}
+            onOpenZeroToPro={() => setIsZeroToProOpen(true)}
+          />
+        </div>
+
+        {/* View Routing */}
+        {activeTab === 'curriculum' && (
+          <CurriculumView
+            initialLessonId={activeLessonId}
+            onOpenLab={handleOpenLab}
+            onAskMentor={handleAskMentor}
+          />
+        )}
+
+        {activeTab === 'simulator' && (
+          <SimulatorView
+            initialLabId={activeLabId}
+            isRunning={isRunning}
+            setIsRunning={setIsRunning}
+            onOpenNigelWithPrompt={handleOpenNigelWithPrompt}
+          />
+        )}
+
+        {activeTab === 'nigel' && (
+          <NigelStudioView
+            initialPrompt={nigelPromptToLoad}
+            onOpenLab={handleOpenLab}
+          />
+        )}
+
+        {activeTab === 'mentor' && (
+          <MentorChatView initialTopic={activeMentorTopic} />
+        )}
+
+        {activeTab === 'tracker' && (
+          <CertificationTrackerView
+            completedLabIds={completedLabIds}
+            completedSkillIds={completedSkillIds}
+            onToggleSkill={handleToggleSkill}
+            onToggleLab={handleToggleLab}
+            onOpenLab={handleOpenLab}
+            onOpenLesson={handleOpenLesson}
+            onOpenExam={handleOpenExamWithTier}
+            onOpenZeroToPro={() => setIsZeroToProOpen(true)}
+            onOpenResourceLibrary={() => setActiveTab('resources')}
+            onResetProgress={handleResetAllProgress}
+          />
+        )}
+
+        {activeTab === 'exam' && (
+          <ExamPrepView
+            initialLevel={activeExamTier}
+            onOpenResourceLibrary={() => setActiveTab('resources')}
+            onOpenCertTracker={() => setActiveTab('tracker')}
+          />
+        )}
+
+        {activeTab === 'resources' && (
+          <ResourceLibraryView
+            onOpenExamPrep={() => setActiveTab('exam')}
+            onOpenCertTracker={() => setActiveTab('tracker')}
+          />
+        )}
+
+        {activeTab === 'osGuide' && <OSGuideView />}
+      </main>
+
+      {/* Zero to Pro Walkthrough Modal */}
+      <ZeroToProWalkthrough
+        isOpen={isZeroToProOpen}
+        onClose={() => setIsZeroToProOpen(false)}
+        onLaunchLab={handleOpenLab}
+        onOpenLesson={handleOpenLesson}
+        onOpenNigel={() => {
+          setIsZeroToProOpen(false);
+          setActiveTab('nigel');
+        }}
+        completedStepIds={completedMilestones}
+        onToggleStepComplete={handleMarkMilestoneComplete}
+      />
+
+      {/* Professional Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-[10px]">
+              G
+            </span>
+            <span className="font-semibold text-slate-400">LabVIEW Academy & Nigel AI Mentor</span>
+            <span>·</span>
+            <span>National Instruments Graphical System Design Education</span>
+          </div>
+          <div className="flex items-center gap-4 text-slate-500">
+            <span>CLAD · CLD · CLA Standards</span>
+            <span>·</span>
+            <span>Windows, macOS & Linux Verified</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
