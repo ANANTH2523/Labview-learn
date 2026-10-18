@@ -146,7 +146,7 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-/** Response shape of POST /api/nigel/assist (shared by server and client). */
+/** A scored Nigel AI prompt blueprint, produced on-device by buildNigelBlueprint(). */
 export interface NigelBlueprintResult {
   score: number;
   critique: string;

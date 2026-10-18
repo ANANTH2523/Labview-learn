@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { ProgressiveStepper } from './components/ProgressiveStepper';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -55,7 +55,6 @@ export default function App() {
   const [activeMentorTopic, setActiveMentorTopic] = useState<string>('');
   const [activeLessonId, setActiveLessonId] = useState<string>('lesson-1');
   const [nigelPromptToLoad, setNigelPromptToLoad] = useState<string>('');
-  const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(false);
   const [isZeroToProOpen, setIsZeroToProOpen] = useState<boolean>(false);
   // Load the walkthrough chunk on first open, then keep it mounted so its internal state survives closing.
   const [walkthroughMounted, setWalkthroughMounted] = useState<boolean>(false);
@@ -70,16 +69,6 @@ export default function App() {
   const [completedMilestones, setCompletedMilestones] = usePersistentSet('labview_academy_completed_milestones', ['m-1']);
   const [completedLabIds, setCompletedLabIds] = usePersistentSet('labview_academy_completed_labs', ['lab-1']);
   const [completedSkillIds, setCompletedSkillIds] = usePersistentSet('labview_academy_completed_skills', DEFAULT_SKILL_IDS);
-
-  // Fetch server health & Gemini key status
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/health', { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Health check failed: ${res.status}`))))
-      .then((data) => setHasGeminiKey(Boolean(data.hasGeminiKey)))
-      .catch(() => setHasGeminiKey(false));
-    return () => controller.abort();
-  }, []);
 
   const handleOpenLab = (labId: string) => {
     setActiveLabId(labId);
@@ -128,7 +117,6 @@ export default function App() {
         setActiveTab={(tab) => setActiveTab(tab)}
         isRunning={isRunning}
         onRunToggle={() => setIsRunning(!isRunning)}
-        hasGeminiKey={hasGeminiKey}
       />
 
       {/* Secondary Fast-Access Bar */}

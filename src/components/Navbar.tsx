@@ -18,7 +18,6 @@ interface NavbarProps {
   setActiveTab: (tab: ActiveTab) => void;
   isRunning: boolean;
   onRunToggle: () => void;
-  hasGeminiKey: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -26,7 +25,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   isRunning,
   onRunToggle,
-  hasGeminiKey,
 }) => {
   const tabs = [
     { id: 'curriculum', label: 'Curriculum', icon: GraduationCap },
@@ -85,17 +83,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Status & Quick Action */}
           <div className="flex items-center gap-2.5 shrink-0">
-            {hasGeminiKey ? (
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Gemini 3.8 Live</span>
-              </div>
-            ) : (
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-800/60 border border-slate-700/50 px-2 py-1 rounded-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                <span>CLA Knowledge Base</span>
-              </div>
-            )}
+            <div
+              title="All features run in your browser: no account, API key, credits or usage limits."
+              className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Free · Works Offline</span>
+            </div>
 
             <button
               onClick={onRunToggle}
