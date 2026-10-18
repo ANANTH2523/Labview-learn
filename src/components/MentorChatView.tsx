@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MENTOR_PERSONAS } from '../data/mentorPersonas';
+import { answerQuestion } from '../utils/mentor-engine';
+import { RichText } from './RichText';
 import { MentorPersona, MentorPersonaId, ChatMessage } from '../types';
 import {
   GraduationCap,
@@ -87,43 +89,22 @@ Whether you are starting from zero knowledge or preparing for your Certified Lab
     setInputMessage('');
     setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/mentor/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          persona: selectedPersonaId,
-          message: text.trim(),
-          history: messages.slice(-5),
-          contextTopic: activePersona.specialty,
-        }),
-      });
+    // Answers come from the built-in knowledge base; the short delay keeps the typing indicator natural.
+    const question = text.trim();
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const reply = answerQuestion(selectedPersonaId, question);
 
-      if (!response.ok) throw new Error('Failed to fetch mentor response');
-      const data = await response.json();
-
-      const assistantMsg: ChatMessage = {
+    setMessages((prev) => [
+      ...prev,
+      {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
         personaId: selectedPersonaId,
-        text: data.text || 'I have analyzed your query and updated your architectural understanding.',
+        text: reply.text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err) {
-      console.error(err);
-      const fallbackMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        sender: 'assistant',
-        personaId: selectedPersonaId,
-        text: `In National Instruments LabVIEW, keep this golden law in mind: A node executes if and only if ALL its input terminals have received valid data tokens. Always pass the Error Cluster through every subVI to enforce deterministic execution ordering and avoid race conditions.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, fallbackMsg]);
-    } finally {
-      setIsLoading(false);
-    }
+      },
+    ]);
+    setIsLoading(false);
   };
 
   const clearChat = () => {
@@ -261,7 +242,7 @@ Whether you are starting from zero knowledge or preparing for your Certified Lab
                   }`}
                 >
                   {/* Clean text output with code/diagram support */}
-                  <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+                  <RichText text={msg.text} />
                   <div
                     className={`mt-2 text-[10px] ${
                       isUser ? 'text-amber-950/70 text-right' : 'text-slate-500 text-left'
