@@ -1,8 +1,13 @@
 # LabVIEW Academy & Nigel AI Mentor
 
-An interactive learning platform for LabVIEW, automated test engineering and Nigel AI prompting:
+A free, interactive learning app for LabVIEW, automated test engineering and Nigel AI prompting:
 a curriculum, a dataflow simulator with hands-on labs, CLAD/CLD/CLA exam prep, a certification
-readiness tracker, a resource library, and AI mentors backed by Google Gemini.
+readiness tracker, a resource library, and AI-style mentors and a prompt studio.
+
+**100% free and offline-capable.** There is no backend, no API key, no account, no credits and no
+usage limits. Everything runs in your browser, including the mentors and the prompt studio, which
+are powered by a built-in, deterministic knowledge base instead of a paid AI service. Fonts are
+self-hosted, so the built app makes no third-party requests.
 
 ![Certification radar chart](docs/screenshots/radar-chart-full.png)
 
@@ -12,71 +17,53 @@ Requires Node.js **22.18+** (see `.nvmrc`).
 
 ```bash
 npm install
-cp .env.example .env     # optional: add GEMINI_API_KEY for live AI answers
-npm run dev              # http://localhost:3000
+npm run dev        # http://localhost:5173
 ```
-
-Without `GEMINI_API_KEY` the app still works: the Mentor and Nigel Studio endpoints return
-built-in offline answers, and the navbar shows that AI is offline.
 
 ## Scripts
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Express + Vite dev server with HMR |
-| `npm run build` | Production client build into `dist/` |
-| `npm start` | Serve `dist/` and the API in production mode (run `build` first) |
+| `npm run dev` | Vite dev server with HMR |
+| `npm run build` | Production build into `dist/` |
+| `npm start` / `npm run preview` | Serve the built `dist/` locally |
 | `npm run lint` | Type-check (`tsc --noEmit`, strict) |
-| `npm test` | Unit + API tests (Node's built-in runner) |
+| `npm test` | Unit tests (Node's built-in runner) |
 | `npm run check` | lint, test and build, the same as CI |
 
-## Configuration
+## Hosting
 
-All optional; see [.env.example](.env.example).
+The output of `npm run build` is a plain static site (`dist/`). Host it for free anywhere that
+serves static files: GitHub Pages, Netlify, Cloudflare Pages, Vercel, or any web server. There
+is nothing to configure and nothing that can run out of quota.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `GEMINI_API_KEY` | none | Enables live Gemini responses |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Model used by the server |
-| `PORT` | `3000` | HTTP port |
-| `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS` | `30` / `60000` | Per-IP budget for AI endpoints |
+## How the "AI" works
 
-## Architecture
+- **Mentor chat** (`src/utils/mentor-engine.ts`, `src/data/mentorKnowledge.ts`): questions are
+  matched against a curated knowledge base of LabVIEW topics (dataflow, race conditions, state
+  machines, VISA/SCPI, DAQmx, error handling, and more). Each of the three mentors frames the
+  answer from their own specialty. Unmatched questions get a helpful fallback with suggested
+  questions. To teach it something new, add a topic to `mentorKnowledge.ts`; a test keeps
+  entries consistent.
+- **Nigel Prompt Studio** (`src/utils/nigel-blueprint.ts`): scores a prompt with the same rubric
+  as the live evaluator and generates an optimized prompt, state list, key nodes and pitfalls for
+  the chosen architecture and hardware.
+- Output is deterministic, so it is fully unit-tested.
+
+## Project layout
 
 ```
-server.ts            bootstrap: env, Vite (dev) or static dist (prod), graceful shutdown
-server/
-  app.ts             createApp(config, ai): routes, security headers, error handling
-  validation.ts      request validation and size limits (pure, unit-tested)
-  rateLimit.ts       in-memory per-IP fixed-window limiter
-  gemini.ts          AiClient seam over @google/genai (null when no key)
-  personas.ts        mentor system prompts and offline answers
-  nigelFallback.ts   offline blueprint + validation of model JSON output
 src/
   App.tsx            shell, persisted progress state, lazy-loaded views
-  components/        one view per tab, plus ErrorBoundary
-  data/              static curriculum, labs, exam and resource content
-  utils/             pure logic (simulator engine, tracker, prompt evaluator, storage), tested
-  types/             types shared by client and server
+  components/        one view per tab, plus ErrorBoundary and RichText (safe Markdown subset)
+  data/              static curriculum, labs, exam, resource and mentor knowledge content
+  utils/             pure logic (simulator engine, tracker, evaluators, mentor engine, storage), tested
+  types/             shared types
 ```
 
-Design notes:
-
-- **API** exposes `GET /api/health`, `POST /api/mentor/chat` and `POST /api/nigel/assist`.
-  Inputs are validated (400 on bad input), student text is fenced as untrusted data in prompts,
-  model output is validated before being returned, and upstream failures map to 502 without
-  leaking details.
-- **Testability**: routes are exercised in-process with a fake `AiClient`, so tests never touch
-  the network.
-- **Progress** (milestones, labs, skills) persists to `localStorage` and tolerates corrupt or
-  blocked storage.
-- Views are code-split with `React.lazy`; a per-view error boundary keeps one crash from
-  blanking the app.
-
-## Deployment notes
-
-- The rate limiter is in-memory, which is fine for one instance. Use a shared store if you scale out.
-- `trust proxy` is set to `1` (single reverse proxy such as Cloud Run); adjust for other topologies.
+Progress (milestones, labs, skills, exam answers) is saved to `localStorage` and tolerates
+corrupt or blocked storage. Views are code-split with `React.lazy`, and a per-view error
+boundary keeps one crash from blanking the app.
 
 ## Screenshots
 
