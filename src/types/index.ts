@@ -145,3 +145,18 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+/** Response shape of POST /api/nigel/assist (shared by server and client). */
+export interface NigelBlueprintResult {
+  score: number;
+  critique: string;
+  optimizedPrompt: string;
+  blockDiagramBlueprint: {
+    pattern: string;
+    states: string[];
+    keyNodes: string[];
+    pitfallAlert: string;
+  };
+  trainingLesson?: string;
+  modelUsed: string;
+}
